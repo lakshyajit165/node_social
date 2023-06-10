@@ -1,0 +1,205 @@
+const express = require("express");
+const { Sequelize, DataTypes } = require("sequelize");
+const { google } = require("googleapis");
+const cors = require("cors");
+const axios = require("axios");
+const querystring = require("node:querystring");
+const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_OAUTH2_TOKEN_ENDPOINT } = require("./configuration/envConfig");
+
+// Create the Express app
+const app = express();
+app.use(express.json());
+
+// cors settings
+const corsOptions = {
+	origin: "http://localhost:4200",
+};
+app.use(cors(corsOptions));
+/**
+ * Reference:
+ * const sequelizeInstance = new Sequelize(DATABASE, DB_USER, DB_HMAC, {
+	host: DB_HOST,
+	port: DB_PORT,
+	dialect: DB_DIALECT,
+	pool: {
+		max: DB_POOL_CONNECTION_LIMIT,
+		idle: DB_POOL_IDLE_TIMEOUT,
+		evict: DB_POOL_EVICT,
+	},
+	define: {
+		timestamps: false,
+	},
+	logging: false,
+});
+*/
+
+// Connect to database
+const sequelize = new Sequelize("node_social", "postgres", "postgres123", {
+	host: "localhost",
+	dialect: "postgres",
+	port: 5432,
+});
+
+// Define the User model
+const User = sequelize.define("User", {
+	id: {
+		type: DataTypes.INTEGER,
+		autoIncrement: true,
+		primaryKey: true,
+	},
+	email: {
+		type: DataTypes.STRING,
+		allowNull: false,
+		unique: true,
+	},
+	password: {
+		type: DataTypes.STRING,
+		allowNull: true,
+	},
+	role: {
+		type: DataTypes.STRING,
+		allowNull: false,
+	},
+});
+
+// Sync the model with the database
+sequelize
+	.sync()
+	.then(() => {
+		console.log("Database and tables created!");
+	})
+	.catch((err) => {
+		console.error("Error creating database and tables:", err);
+	});
+
+// Google OAuth2 credentials
+const oauth2Client = new google.auth.OAuth2(
+	GOOGLE_CLIENT_ID, //"your_client_id",
+	GOOGLE_CLIENT_SECRET, //"your_client_secret",
+	GOOGLE_REDIRECT_URI // client side "your_redirect_url");
+);
+
+// Google Sign Up
+app.post("/auth/google/signup", (req, res) => {
+	const authHeader = req.headers.authorization;
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return res.status(401).send({ message: "Invalid or missing id token" });
+	}
+	const token = authHeader.split(" ")[1];
+
+	// Verify the Google token
+	oauth2Client
+		.verifyIdToken({ idToken: token })
+		.then(async (oauth2ClientVerifyIdTokenResult) => {
+			const payload = oauth2ClientVerifyIdTokenResult.getPayload();
+			const email = payload.email;
+
+			// Check if the user already exists in the database
+			const existingUser = await User.findOne({ where: { email } });
+			if (existingUser) {
+				return res.status(409).send({ message: "User already exists" });
+			}
+
+			// Create a new user with the role 'user'
+			await User.create({ email, role: "user" });
+
+			return res.status(200).send({ message: "Google sign up successful" });
+		})
+		.catch((err) => {
+			return res.status(400).send({ message: err && err.message ? err.message : "Invalid Google token" });
+		});
+});
+
+// Google Sign In
+app.post("/auth/google/login", (req, res) => {
+	const authHeader = req.headers.authorization;
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return res.status(401).send({ message: "Invalid or missing id token" });
+	}
+	const token = authHeader.split(" ")[1];
+
+	// Verify the Google token
+	oauth2Client
+		.verifyIdToken({ idToken: token })
+		.then(async (oauth2ClientVerifyIdTokenResult) => {
+			const payload = oauth2ClientVerifyIdTokenResult.getPayload();
+			const email = payload.email;
+
+			// Check if the user exists in the database
+			const user = await User.findOne({ where: { email } });
+			if (!user) {
+				return res.status(404).send({ message: "User not found" });
+			}
+
+			return res.status(200).send({ message: "Google sign in successful" });
+		})
+		.catch((err) => {
+			return res.status(400).send({ message: err && err.message ? err.message : "Invalid Google token" });
+		});
+});
+
+app.get("/auth/google/tokenExchange", async (req, res) => {
+	const authorizationCode = req.query.authorizationCode;
+	if (!authorizationCode) {
+		return res.status(400).send({
+			message: "Invalid authorization code",
+		});
+	}
+	/**
+	 * 1. Call function for token exchange
+	 * 2. Get the accessToken, refreshToken and expiryTime
+	 * 3. Encrypt the tokens and send it to client in response body.
+	 * 4. Client can use the same decrypting mechanism to decrypt and store the tokens
+	 */
+	try {
+		const { accessToken, idToken, expiresIn } = await exchangeAuthorizationCodeForTokens(authorizationCode);
+		return res.status(200).send({
+			acc_tk: accessToken,
+			id_tk: idToken,
+			exp: expiresIn,
+		});
+	} catch (err) {
+		return res.status(500).send({
+			message: "Error while verifying authorization code | " + err && err.message ? err.message : "",
+		});
+	}
+});
+
+app.get("/test", (req, res) => {
+	return res.status(200).send({ message: "Test route works!" });
+});
+
+async function exchangeAuthorizationCodeForTokens(code) {
+	/**
+	 * Typically we don't need a refresh token because
+	 * in any application using Oauth2(Google in this case), you are
+	 * logged out of the application if you logout of Google.
+	 * So only accessToken and idToken are fine.
+	 */
+	const tokenEndpoint = GOOGLE_OAUTH2_TOKEN_ENDPOINT;
+	const requestBody = {
+		code: code,
+		client_id: GOOGLE_CLIENT_ID, // client id
+		client_secret: GOOGLE_CLIENT_SECRET, //"your_client_secret",
+		/**
+		 * The redirect uri needs to be same as defined on the client side
+		 * otherwise the signin/signup flow throws a "redirect uri mismatch" error
+		 * Note: Passing the redirect uri here on the server side doesn't serve any
+		 * other purpose other than a "configuration parameter"
+		 */
+		redirect_uri: GOOGLE_REDIRECT_URI,
+		grant_type: "authorization_code",
+	};
+	const response = await axios.post(tokenEndpoint, querystring.stringify(requestBody));
+	const { access_token, id_token, expires_in } = response.data;
+	return {
+		accessToken: access_token,
+		idToken: id_token,
+		expiresIn: expires_in,
+	};
+}
+
+// Start the server
+app.listen(3000, () => {
+	console.log("Server started on port 3000");
+});
