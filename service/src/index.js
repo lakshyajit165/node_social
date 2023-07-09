@@ -101,7 +101,7 @@ app.post("/auth/google/signup", (req, res) => {
 			}
 
 			// Create a new user with the role 'user'
-			await User.create({ email, role: "user" });
+			await createUser(email);
 
 			return res.status(200).send({ message: "Google sign up successful" });
 		})
@@ -128,7 +128,11 @@ app.post("/auth/google/login", (req, res) => {
 			// Check if the user exists in the database
 			const user = await User.findOne({ where: { email } });
 			if (!user) {
-				return res.status(404).send({ message: "User not found" });
+				/**
+				 * create a user, just like signup flow, because
+				 * that's typically how google login works
+				 */
+				await createUser(email);
 			}
 
 			return res.status(200).send({ message: "Google sign in successful" });
@@ -197,6 +201,14 @@ async function exchangeAuthorizationCodeForTokens(code) {
 		idToken: id_token,
 		expiresIn: expires_in,
 	};
+}
+
+async function createUser(email) {
+	/**
+	 * creates a user in the db
+	 * Role's logic to be defined later
+	 */
+	await User.create({ email, role: "user" });
 }
 
 // Start the server
