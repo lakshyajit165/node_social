@@ -38,21 +38,26 @@ const sequelize = new Sequelize("node_social", "postgres", "postgres123", {
 	host: "localhost",
 	dialect: "postgres",
 	port: 5432,
+	logging: false,
 });
 
 // Define the User model
 const User = sequelize.define("User", {
 	id: {
-		type: DataTypes.INTEGER,
-		autoIncrement: true,
-		primaryKey: true,
+		type: Sequelize.UUID,
+		defaultValue: Sequelize.UUIDV4,
+		allowNull: false,
 	},
 	email: {
 		type: DataTypes.STRING,
 		allowNull: false,
-		unique: true,
+		primaryKey: true,
 	},
 	password: {
+		type: DataTypes.STRING,
+		allowNull: true,
+	},
+	avatar_url: {
 		type: DataTypes.STRING,
 		allowNull: true,
 	},
@@ -101,7 +106,7 @@ app.post("/auth/google/signup", (req, res) => {
 			}
 
 			// Create a new user with the role 'user'
-			await createUser(email);
+			await createUser(payload);
 
 			return res.status(200).send({ message: "Google sign up successful" });
 		})
@@ -124,15 +129,14 @@ app.post("/auth/google/login", (req, res) => {
 		.then(async (oauth2ClientVerifyIdTokenResult) => {
 			const payload = oauth2ClientVerifyIdTokenResult.getPayload();
 			const email = payload.email;
-
 			// Check if the user exists in the database
-			const user = await User.findOne({ where: { email } });
+			const user = await User.findOne({ where: { email: email } });
 			if (!user) {
 				/**
 				 * create a user, just like signup flow, because
 				 * that's typically how google login works
 				 */
-				await createUser(email);
+				await createUser(payload);
 			}
 
 			return res.status(200).send({ message: "Google sign in successful" });
@@ -203,12 +207,12 @@ async function exchangeAuthorizationCodeForTokens(code) {
 	};
 }
 
-async function createUser(email) {
+async function createUser(payload) {
 	/**
 	 * creates a user in the db
 	 * Role's logic to be defined later
 	 */
-	await User.create({ email, role: "user" });
+	await User.create({ email: payload.email, role: "user", avatar_url: payload.picture });
 }
 
 // Start the server
