@@ -27,8 +27,9 @@
     justify-content: center;
 }
 
-.signup-link {
+.login-link {
     text-decoration: none;
     margin-left: 5px;
-    color: rgb(0, 136, 255)
+    color: rgb(0, 136, 255);
+    cursor: pointer;
 }

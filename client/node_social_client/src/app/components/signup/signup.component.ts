@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-signup',
@@ -6,7 +7,7 @@ import { Component, OnInit } from '@angular/core';
   styleUrls: ['./signup.component.css'],
 })
 export class SignupComponent implements OnInit {
-  constructor() {}
+  constructor(private _router: Router) {}
 
   ngOnInit(): void {}
 
@@ -20,5 +21,9 @@ export class SignupComponent implements OnInit {
 
   base64EncodeState(state: string): string {
     return btoa(state);
+  }
+
+  onClickLogin(): void {
+    this._router.navigate(['/login']);
   }
 }

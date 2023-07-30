@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { CookieService } from 'ngx-cookie-service';
 import { IAuthTokenData } from 'src/app/model/IAuthTokenData';
 import { AuthService } from 'src/app/services/auth.service';
 import { SnackbarService } from 'src/app/services/snackbar.service';
@@ -13,7 +14,8 @@ export class OauthCallbackComponent implements OnInit {
   constructor(
     private _router: Router,
     private _authService: AuthService,
-    private _snackBarService: SnackbarService
+    private _snackBarService: SnackbarService,
+    private _cookieService: CookieService
   ) {}
 
   ngOnInit(): void {
@@ -71,6 +73,8 @@ export class OauthCallbackComponent implements OnInit {
     this._authService.login(authToken).subscribe({
       next: (data: object) => {
         console.log(data);
+        // set the tokens in cookies here
+        this._cookieService.set('id_tk', authToken, 3600, '/');
         this._router.navigate(['/profile']);
       },
       error: (err) => {
@@ -88,6 +92,8 @@ export class OauthCallbackComponent implements OnInit {
     this._authService.signup(authToken).subscribe({
       next: (data: object) => {
         console.log(data);
+        // set the tokens in cookies here
+        this._cookieService.set('id_tk', authToken, 3600, '/');
         this._router.navigate(['/profile']);
       },
       error: (err) => {

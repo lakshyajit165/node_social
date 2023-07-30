@@ -3,12 +3,16 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { IAuthTokenData } from '../model/IAuthTokenData';
 import { IAuthResponse } from '../model/IAuthResponse';
+import { CookieService } from 'ngx-cookie-service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  constructor(private _http: HttpClient) {}
+  constructor(
+    private _http: HttpClient,
+    private _cookieService: CookieService
+  ) {}
 
   API_BASE_URL: string = 'http://localhost:3000';
 
@@ -32,21 +36,6 @@ export class AuthService {
       )
       .pipe(map((response) => response as IAuthResponse));
   }
-
-  // login(token: string): Observable<IAuthResponse> {
-  //   let headers = new HttpHeaders();
-  //   console.log(token);
-  //   headers = this.createAuthorizationHeader(headers, token);
-  //   return this._http
-  //     .post(
-  //       this.API_BASE_URL + '/auth/google/login',
-  //       {},
-  //       {
-  //         headers: headers,
-  //       }
-  //     )
-  //     .pipe(map((response) => response as IAuthResponse));
-  // }
 
   signup(token: string): Observable<IAuthResponse> {
     let headers = new HttpHeaders().set(
@@ -72,5 +61,9 @@ export class AuthService {
           code
       )
       .pipe(map((response) => response as IAuthTokenData));
+  }
+
+  logout(): void {
+    this._cookieService.delete('id_tk', '/');
   }
 }
