@@ -1,5 +1,4 @@
 const express = require("express");
-const { Sequelize, DataTypes } = require("sequelize");
 const { google } = require("googleapis");
 const cors = require("cors");
 const axios = require("axios");
@@ -15,60 +14,9 @@ const corsOptions = {
 	origin: "http://localhost:4200",
 };
 app.use(cors(corsOptions));
-/**
- * Reference:
- * const sequelizeInstance = new Sequelize(DATABASE, DB_USER, DB_HMAC, {
-	host: DB_HOST,
-	port: DB_PORT,
-	dialect: DB_DIALECT,
-	pool: {
-		max: DB_POOL_CONNECTION_LIMIT,
-		idle: DB_POOL_IDLE_TIMEOUT,
-		evict: DB_POOL_EVICT,
-	},
-	define: {
-		timestamps: false,
-	},
-	logging: false,
-});
-*/
 
-// Connect to database
-const sequelize = new Sequelize("node_social", "postgres", "postgres123", {
-	host: "localhost",
-	dialect: "postgres",
-	port: 5432,
-	logging: false,
-});
-
-// Define the User model
-const User = sequelize.define("User", {
-	id: {
-		type: Sequelize.UUID,
-		defaultValue: Sequelize.UUIDV4,
-		allowNull: false,
-	},
-	email: {
-		type: DataTypes.STRING,
-		allowNull: false,
-		primaryKey: true,
-	},
-	password: {
-		type: DataTypes.STRING,
-		allowNull: true,
-	},
-	avatar_url: {
-		type: DataTypes.STRING,
-		allowNull: true,
-	},
-	role: {
-		type: DataTypes.STRING,
-		allowNull: false,
-	},
-});
-
-// Sync the model with the database
-sequelize
+const db = require("./models/index");
+db.sequelizeInstance
 	.sync()
 	.then(() => {
 		console.log("Database and tables created!");
@@ -77,6 +25,8 @@ sequelize
 		console.error("Error creating database and tables:", err);
 	});
 
+const models = require("./models/index");
+const User = models.User;
 // Google OAuth2 credentials
 const oauth2Client = new google.auth.OAuth2(
 	GOOGLE_CLIENT_ID, //"your_client_id",
