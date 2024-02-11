@@ -2,6 +2,7 @@ const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_OAUT
 const { google } = require("googleapis");
 const axios = require("axios");
 const querystring = require("node:querystring");
+const jwt = require("jsonwebtoken");
 const models = require("../models/index");
 const User = models.User;
 const oauth2Client = new google.auth.OAuth2(
@@ -9,9 +10,15 @@ const oauth2Client = new google.auth.OAuth2(
 	GOOGLE_CLIENT_SECRET, //"your_client_secret",
 	GOOGLE_REDIRECT_URI // client side "your_redirect_url");
 );
+const userRoleMap = {
+	"lakshyajit165@gmail.com": ["ROLE_ADMIN", "ROLE_USER"],
+};
 
 const userSignUp = async (req, res) => {
 	const authHeader = req.headers.authorization;
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return res.status(401).send({ message: "Invalid or missing id token" });
+	}
 	const token = authHeader.split(" ")[1];
 
 	// Verify the Google token
@@ -27,7 +34,7 @@ const userSignUp = async (req, res) => {
 				return res.status(409).send({ message: "User already exists" });
 			}
 
-			// Create a new user with the role 'user'
+			// Create a new user with the appropriate role
 			await createUser(payload);
 
 			return res.status(200).send({ message: "Google sign up successful" });
@@ -97,9 +104,12 @@ const oauthTokenExchange = async (req, res) => {
 async function createUser(payload) {
 	/**
 	 * creates a user in the db
-	 * Role's logic to be defined later
 	 */
-	await User.create({ email: payload.email, role: "user", avatar_url: payload.picture });
+	if (payload.email && userRoleMap[payload.email]) {
+		await User.create({ email: payload.email, role: userRoleMap[payload.email], avatar_url: payload.picture });
+	} else {
+		await User.create({ email: payload.email, avatar_url: payload.picture });
+	}
 }
 
 async function exchangeAuthorizationCodeForTokens(code) {
@@ -132,9 +142,44 @@ async function exchangeAuthorizationCodeForTokens(code) {
 	};
 }
 
+// can be accessed only by admin
+const getAdminContents = async (req, res) => {
+	const authHeader = req.headers.authorization;
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return res.status(401).send({ message: "Invalid or missing id token" });
+	}
+	try {
+		const oauthToken = authHeader.split(" ")[1];
+		const decodedValues = jwt.decode(oauthToken, { complete: true });
+		const email = decodedValues.payload.email;
+		// check if the user has the appropriate role here
+		const user = await User.findOne({ where: { email: email } });
+		if (user && user.role && user.role.includes("ROLE_ADMIN")) {
+			return res.status(200).send({
+				message: "access granted to admin",
+			});
+		}
+		return res.status(403).send({
+			message: "insufficient privileges",
+		});
+	} catch (err) {
+		console.log(err);
+		return res.status(500).send({
+			message: "error while fetching admin contents",
+		});
+	}
+};
+
+// can be accessed by admin and user
+const getUserContents = (req, res) => {
+	return res.status(200).send({ message: "access granted to user" });
+};
+
 module.exports = {
 	userLogin,
 	userSignUp,
 	oauthTokenExchange,
 	testServerResponse,
+	getAdminContents,
+	getUserContents,
 };

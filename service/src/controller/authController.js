@@ -1,5 +1,5 @@
 const express = require("express");
-const { userSignUp, userLogin, oauthTokenExchange } = require("../service/userService");
+const { userSignUp, userLogin, oauthTokenExchange, getAdminContents, getUserContents } = require("../service/userService");
 const { validateIdToken, validateAuthorizationCode } = require("../middlewares/requestParser");
 const router = express.Router();
 
@@ -10,5 +10,9 @@ router.post("/auth/google/signup", [validateIdToken], userSignUp);
 router.post("/auth/google/login", [validateIdToken], userLogin);
 
 router.get("/auth/google/tokenExchange", [validateAuthorizationCode], oauthTokenExchange);
+
+router.get("/auth/admin/dashboard", getAdminContents);
+
+router.get("/auth/user/dashboard", getUserContents);
 
 module.exports = router;

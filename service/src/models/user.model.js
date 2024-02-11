@@ -12,6 +12,7 @@ module.exports = (sequelizeInstance) => {
 			allowNull: false,
 			primaryKey: true,
 		},
+		// for future purposes(if required to add own auth logic instead of google oauth)
 		password: {
 			type: DataTypes.STRING,
 			allowNull: true,
@@ -21,8 +22,9 @@ module.exports = (sequelizeInstance) => {
 			allowNull: true,
 		},
 		role: {
-			type: DataTypes.STRING,
+			type: DataTypes.ARRAY(DataTypes.ENUM("ROLE_ADMIN", "ROLE_USER")),
 			allowNull: false,
+			defaultValue: ["ROLE_USER"],
 		},
 	});
 	return User;
