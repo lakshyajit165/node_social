@@ -1,0 +1,9 @@
+.oauth-callback-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80%;
+}
+.oauth-callback-wrapper {
+    max-width: 400px;
+}

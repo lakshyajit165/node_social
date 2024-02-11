@@ -1,0 +1,35 @@
+[contenteditable]:focus {
+    outline: 0px solid transparent;
+}
+
+.login-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80%;
+}
+
+.login-card {
+    max-width: 450px;
+}
+
+.login-btn {
+    width: 100%;
+    text-decoration: none;
+}
+
+.form-field-width {
+    width: 100%;
+}
+
+.center-text {
+    display: flex;
+    justify-content: center;
+}
+
+.signup-link {
+    text-decoration: none;
+    margin-left: 5px;
+    color: rgb(0, 136, 255);
+    cursor: pointer;
+}

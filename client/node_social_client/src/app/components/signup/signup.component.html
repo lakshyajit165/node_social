@@ -1,0 +1,39 @@
+<!-- <pre contenteditable="true">signup works!</pre>
+<a href="{{ googleSignInUrl }}">Sign in with Google</a> -->
+<section class="col-lg-12 signup-section">
+  <mat-card
+    class="mx-auto signup-card mat-mdc-elevation-specific mat-elevation-z0"
+  >
+    <mat-card-header class="mb-3">
+      <mat-card-title> <h3>Welcome to Node Social</h3></mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <a
+        mat-raised-button
+        color="primary"
+        href="{{ googleSignUpUrl }}"
+        type="button"
+        class="signup-btn"
+      >
+        SignUp with Google
+      </a>
+      <div class="row mb-3 mt-3">
+        <div class="col-3">
+          <hr />
+        </div>
+        <div class="col-6 text-center mt-1">
+          <p>OR</p>
+        </div>
+        <div class="col-3">
+          <hr />
+        </div>
+      </div>
+      <div class="mb-3 text-center">
+        <p>
+          Already have an account ?
+          <span class="login-link" (click)="onClickLogin()">Login</span>
+        </p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</section>
