@@ -1,81 +1,54 @@
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, GOOGLE_OAUTH2_TOKEN_ENDPOINT } = require("../configuration/envConfig");
-const { google } = require("googleapis");
 const axios = require("axios");
 const querystring = require("node:querystring");
 const jwt = require("jsonwebtoken");
 const models = require("../models/index");
 const User = models.User;
-const oauth2Client = new google.auth.OAuth2(
-	GOOGLE_CLIENT_ID, //"your_client_id",
-	GOOGLE_CLIENT_SECRET, //"your_client_secret",
-	GOOGLE_REDIRECT_URI // client side "your_redirect_url");
-);
+
 const userRoleMap = {
 	"lakshyajit165@gmail.com": ["ROLE_ADMIN", "ROLE_USER"],
 };
 
 const userSignUp = async (req, res) => {
-	const authHeader = req.headers.authorization;
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return res.status(401).send({ message: "Invalid or missing id token" });
+	try {
+		const payload = req.body.payload;
+		const email = payload.email;
+		// Check if the user already exists in the database
+		const existingUser = await User.findOne({ where: { email } });
+		if (existingUser) {
+			return res.status(409).send({ message: "user already exists" });
+		}
+
+		// Create a new user with the appropriate role
+		await createUser(payload);
+
+		return res.status(200).send({ message: "google sign up successful" });
+	} catch (err) {
+		return res.status(400).send({ message: err && err.message ? err.message : "error signing up user" });
 	}
-	const token = authHeader.split(" ")[1];
-
-	// Verify the Google token
-	oauth2Client
-		.verifyIdToken({ idToken: token })
-		.then(async (oauth2ClientVerifyIdTokenResult) => {
-			const payload = oauth2ClientVerifyIdTokenResult.getPayload();
-			const email = payload.email;
-
-			// Check if the user already exists in the database
-			const existingUser = await User.findOne({ where: { email } });
-			if (existingUser) {
-				return res.status(409).send({ message: "User already exists" });
-			}
-
-			// Create a new user with the appropriate role
-			await createUser(payload);
-
-			return res.status(200).send({ message: "Google sign up successful" });
-		})
-		.catch((err) => {
-			return res.status(400).send({ message: err && err.message ? err.message : "Invalid Google token" });
-		});
 };
 
 const userLogin = async (req, res) => {
-	const authHeader = req.headers.authorization;
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return res.status(401).send({ message: "Invalid or missing id token" });
+	try {
+		const payload = req.body.payload;
+		const email = payload.email;
+		// Check if the user exists in the database
+		const user = await User.findOne({ where: { email: email } });
+		if (!user) {
+			/**
+			 * create a user, just like signup flow, because
+			 * that's typically how google login works
+			 */
+			await createUser(payload);
+		}
+		return res.status(200).send({ message: "google sign in successful" });
+	} catch (err) {
+		return res.status(400).send({ message: err && err.message ? err.message : "error logging in user" });
 	}
-	const token = authHeader.split(" ")[1];
-
-	// Verify the Google token
-	oauth2Client
-		.verifyIdToken({ idToken: token })
-		.then(async (oauth2ClientVerifyIdTokenResult) => {
-			const payload = oauth2ClientVerifyIdTokenResult.getPayload();
-			const email = payload.email;
-			// Check if the user exists in the database
-			const user = await User.findOne({ where: { email: email } });
-			if (!user) {
-				/**
-				 * create a user, just like signup flow, because
-				 * that's typically how google login works
-				 */
-				await createUser(payload);
-			}
-
-			return res.status(200).send({ message: "Google sign in successful" });
-		})
-		.catch((err) => {
-			return res.status(400).send({ message: err && err.message ? err.message : "Invalid Google token" });
-		});
 };
 
 const testServerResponse = (req, res) => {
-	return res.status(200).send({ message: "Testing server response" });
+	return res.status(200).send({ message: "testing server response" });
 };
 
 const oauthTokenExchange = async (req, res) => {
